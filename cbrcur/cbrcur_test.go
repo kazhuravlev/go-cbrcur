@@ -50,7 +50,8 @@ func TestClient_GetCurrencies(t *testing.T) {
 
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
-	ctx2, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel2()
 
 	type args struct {
 		ctx context.Context
@@ -102,7 +103,8 @@ func TestClient_GetRateReport(t *testing.T) {
 
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
-	ctx2, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel2()
 
 	date := time.Date(2015, 8, 22, 0, 0, 0, 0, time.UTC)
 
@@ -153,7 +155,8 @@ func ExampleNew() {
 func ExampleClient_GetCurrencies() {
 	client, _ := cbrcur.New()
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	currencies, _ := client.GetCurrencies(ctx)
 	fmt.Println(currencies[:1])
 	// Output: [{R01010 Австралийский доллар Australian Dollar 1 R01010     36 AUD}]
@@ -163,7 +166,8 @@ func ExampleClient_GetCurrencies() {
 func ExampleClient_GetRatesReport() {
 	client, _ := cbrcur.New()
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	date := time.Date(2015, 8, 22, 0, 0, 0, 0, time.UTC)
 	rates, _ := client.GetRatesReport(ctx, &date)
 	fmt.Println(rates.Rates[:1])
