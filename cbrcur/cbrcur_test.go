@@ -157,10 +157,13 @@ func ExampleClient_GetCurrencies() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	currencies, _ := client.GetCurrencies(ctx)
-	fmt.Println(currencies[:1])
-	// Output: [{R01010 Австралийский доллар Australian Dollar 1 R01010     36 AUD}]
+	currencies, err := client.GetCurrencies(ctx)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return
+	}
 
+	fmt.Println(currencies[:3])
 }
 
 func ExampleClient_GetRatesReport() {
@@ -169,7 +172,11 @@ func ExampleClient_GetRatesReport() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	date := time.Date(2015, 8, 22, 0, 0, 0, 0, time.UTC)
-	rates, _ := client.GetRatesReport(ctx, &date)
+	rates, err := client.GetRatesReport(ctx, &date)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return
+	}
+
 	fmt.Println(rates.Rates[:1])
-	// Output: [{R01010 36 AUD 1 Австралийский доллар 49.9059}]
 }
