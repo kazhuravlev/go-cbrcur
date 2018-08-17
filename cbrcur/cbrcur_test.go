@@ -1,14 +1,48 @@
 package cbrcur_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/kazhuravlev/go-cbrcur/cbrcur"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
+)
+
+type roundTripper struct {
+	status  int
+	headers http.Header
+	body    []byte
+}
+
+func (rt roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: rt.status,
+		Body:       ioutil.NopCloser(bytes.NewBuffer(rt.body)),
+		Header:     rt.headers,
+	}, nil
+}
+
+func mockClientResponse(status int, headers http.Header, body []byte) *http.Client {
+	rt := roundTripper{
+		status:  status,
+		headers: headers,
+		body:    body,
+	}
+
+	return &http.Client{Transport: rt}
+}
+
+var (
+	bodyCurrencies, _    = ioutil.ReadFile("./testdata/currencies.xml")
+	mockedCurrencyClient = mockClientResponse(200, make(http.Header), bodyCurrencies)
+
+	bodyRates, _      = ioutil.ReadFile("./testdata/rate_report.xml")
+	mockedRatesClient = mockClientResponse(200, make(http.Header), bodyRates)
 )
 
 func TestNew(t *testing.T) {
@@ -46,8 +80,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestClient_GetCurrencies(t *testing.T) {
-	client, _ := cbrcur.New()
-
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 20*time.Second)
@@ -57,15 +89,20 @@ func TestClient_GetCurrencies(t *testing.T) {
 		ctx context.Context
 	}
 	tests := []struct {
-		name string
-		args args
-		err  error
+		name       string
+		httpClient *http.Client
+		args       args
+		err        error
 	}{
-		{"With canceled context", args{ctx1}, context.Canceled},
-		{"Normal request", args{ctx2}, nil},
+		{"With canceled context", http.DefaultClient, args{ctx1}, context.Canceled},
+		{"Normal request", mockedCurrencyClient, args{ctx2}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			client, _ := cbrcur.New(
+				cbrcur.WithHttpClient(tt.httpClient),
+			)
+
 			currencies, err := client.GetCurrencies(tt.args.ctx)
 			if tt.err != nil {
 				assert.NotNil(t, err)
@@ -99,8 +136,6 @@ func TestClient_GetCurrencies(t *testing.T) {
 }
 
 func TestClient_GetRateReport(t *testing.T) {
-	client, _ := cbrcur.New()
-
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 20*time.Second)
@@ -113,16 +148,20 @@ func TestClient_GetRateReport(t *testing.T) {
 		date *time.Time
 	}
 	tests := []struct {
-		name string
-		args args
-		err  error
+		name       string
+		httpClient *http.Client
+		args       args
+		err        error
 	}{
-		{"With canceled context", args{ctx1, &date}, context.Canceled},
-		{"With nil date", args{ctx2, nil}, nil},
-		{"With date", args{ctx2, &date}, nil},
+		{"With canceled context", http.DefaultClient, args{ctx1, &date}, context.Canceled},
+		{"With nil date", mockedRatesClient, args{ctx2, nil}, nil},
+		{"With date", mockedRatesClient, args{ctx2, &date}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			client, _ := cbrcur.New(
+				cbrcur.WithHttpClient(tt.httpClient),
+			)
 			report, err := client.GetRatesReport(tt.args.ctx, tt.args.date)
 			if tt.err != nil {
 				assert.NotNil(t, err)
@@ -153,30 +192,22 @@ func ExampleNew() {
 }
 
 func ExampleClient_GetCurrencies() {
-	client, _ := cbrcur.New()
+	client, _ := cbrcur.New(cbrcur.WithHttpClient(mockedCurrencyClient))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	currencies, err := client.GetCurrencies(ctx)
-	if err != nil {
-		fmt.Println("error: ", err)
-		return
-	}
-
-	fmt.Println(currencies[:3])
+	currencies, _ := client.GetCurrencies(ctx)
+	fmt.Println(currencies[:1])
+	// Output: [{R01010 Австралийский доллар Australian Dollar 1 R01010     36 AUD}]
 }
 
 func ExampleClient_GetRatesReport() {
-	client, _ := cbrcur.New()
+	client, _ := cbrcur.New(cbrcur.WithHttpClient(mockedRatesClient))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	date := time.Date(2015, 8, 22, 0, 0, 0, 0, time.UTC)
-	rates, err := client.GetRatesReport(ctx, &date)
-	if err != nil {
-		fmt.Println("error: ", err)
-		return
-	}
-
+	rates, _ := client.GetRatesReport(ctx, &date)
 	fmt.Println(rates.Rates[:1])
+	// Output: [{R01010 36 AUD 1 Австралийский доллар 49.9059}]
 }
