@@ -1,10 +1,12 @@
 language: go
 
 go:
-  - "1.8.x"
   - "1.9.x"
   - "1.10.x"
   - "master"
 
 install: go get -t -v ./cbrcur/...
 script: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./cbrcur/...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -f coverage.txt
