@@ -50,7 +50,7 @@ func TestClient_GetCurrencies(t *testing.T) {
 
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel2()
 
 	type args struct {
@@ -103,7 +103,7 @@ func TestClient_GetRateReport(t *testing.T) {
 
 	ctx1, cancel := context.WithCancel(context.Background())
 	cancel()
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel2()
 
 	date := time.Date(2015, 8, 22, 0, 0, 0, 0, time.UTC)
